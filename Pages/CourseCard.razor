@@ -1,0 +1,45 @@
+@* CourseCard: Accepts Course parameter and OnEnroll EventCallback<Course> *@
+@* EventCallback binding: parent-child communication — parent handles the enroll logic *@
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title fw-semibold">@Course.Code — @Course.Title</h6>
+        <p class="text-muted mb-1">Credits: @Course.CreditHours</p>
+        <p class="mb-2 small">
+            Enrolled: @Course.EnrollmentCount / @Course.MaxCapacity
+            <span class="badge @StatusBadge ms-2">@Course.Status</span>
+        </p>
+        @* Enrollment progress bar: enrolled/maxCapacity * 100 *@
+        <div class="progress mb-2">
+            <div class="progress-bar @BarColor" role="progressbar" style="width:@Progress%"></div>
+        </div>
+        @if (OnEnroll.HasDelegate && Course.Status != EnrollmentStatus.Full)
+        {
+            <button class="btn btn-primary btn-sm" @onclick="() => OnEnroll.InvokeAsync(Course)">Enroll</button>
+        }
+        @if (OnDrop.HasDelegate)
+        {
+            <button class="btn btn-outline-danger btn-sm ms-1" @onclick="() => OnDrop.InvokeAsync(Course)">Drop</button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Course Course { get; set; } = default!;
+    // EventCallback: invoked with Course object — parent handles service call (ISP)
+    [Parameter] public EventCallback<Course> OnEnroll { get; set; }
+    [Parameter] public EventCallback<Course> OnDrop { get; set; }
+
+    private int Progress => Course.MaxCapacity == 0 ? 0 : (int)(Course.EnrollmentCount * 100.0 / Course.MaxCapacity);
+    private string StatusBadge => Course.Status switch
+    {
+        EnrollmentStatus.Full       => "bg-danger",
+        EnrollmentStatus.AlmostFull => "bg-warning text-dark",
+        _                           => "bg-success"
+    };
+    private string BarColor => Course.Status switch
+    {
+        EnrollmentStatus.Full       => "bg-danger",
+        EnrollmentStatus.AlmostFull => "bg-warning",
+        _                           => "bg-success"
+    };
+}

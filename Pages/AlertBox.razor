@@ -1,0 +1,29 @@
+@* AlertBox: Accepts Message (string) and Type (enum) as parameters. Renders Bootstrap alert. *@
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="alert @CssClass alert-dismissible fade show" role="alert">
+        <span>@Message</span>
+        <button type="button" class="btn-close" @onclick="Dismiss"></button>
+    </div>
+}
+
+@code {
+    [Parameter] public string Message { get; set; } = "";
+    [Parameter] public AlertType Type { get; set; } = AlertType.Info;
+    [Parameter] public EventCallback OnDismissed { get; set; }
+
+    private string CssClass => Type switch
+    {
+        AlertType.Success => "alert-success",
+        AlertType.Warning => "alert-warning",
+        AlertType.Error => "alert-danger",
+        _ => "alert-info"
+    };
+
+    private async Task Dismiss()
+    {
+        Message = string.Empty;
+        if (OnDismissed.HasDelegate)
+            await OnDismissed.InvokeAsync();
+    }
+}

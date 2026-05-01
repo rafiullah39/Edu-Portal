@@ -1,0 +1,88 @@
+﻿@page "/admin/notifications"
+@rendermode InteractiveServer
+@layout MainLayout
+@inject AuthStateService Auth
+@inject INotificationService NotifSvc
+@inject UserStore Store
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Admin })">
+    <h4 class="page-title mb-3">Broadcast Notification</h4>
+
+    @if (!string.IsNullOrEmpty(_msg))
+    {
+        <AlertBox Message="@_msg" Type="@_msgType" OnDismissed="@(() => _msg = "")" />
+    }
+
+    <div class="card" style="max-width:600px">
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Message</label>
+                <textarea class="form-control" rows="4"
+                          placeholder="Enter your broadcast message..."
+                          @bind="_message" @bind:event="oninput"></textarea>
+                <div class="text-muted small mt-1">@_message.Length / 500 characters</div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label">Send To</label>
+                <div class="d-flex gap-4 flex-wrap">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" @bind="_toStudents" id="chkStudents" />
+                        <label class="form-check-label" for="chkStudents">👨‍🎓 Students</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" @bind="_toFaculty" id="chkFaculty" />
+                        <label class="form-check-label" for="chkFaculty">👩‍🏫 Faculty</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" @bind="_toAdmin" id="chkAdmin" />
+                        <label class="form-check-label" for="chkAdmin">🔐 Admin</label>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" @onclick="Broadcast">
+                📢 Send Broadcast
+            </button>
+        </div>
+    </div>
+</AuthGuard>
+
+@code {
+    private string _message = "";
+    private bool _toStudents, _toFaculty, _toAdmin;
+    private string _msg = "";
+    private AlertType _msgType = AlertType.Success;
+
+    private void Broadcast()
+    {
+        if (string.IsNullOrWhiteSpace(_message))
+        {
+            _msg = "Please enter a message before sending.";
+            _msgType = AlertType.Warning;
+            return;
+        }
+
+        if (_message.Length > 500)
+        {
+            _msg = "Message cannot exceed 500 characters.";
+            _msgType = AlertType.Warning;
+            return;
+        }
+
+        if (!_toStudents && !_toFaculty && !_toAdmin)
+        {
+            _msg = "Please select at least one recipient group.";
+            _msgType = AlertType.Warning;
+            return;
+        }
+
+        var allUsers = Store.GetAll();
+        if (_toStudents) NotifSvc.BroadcastToRole(UserRole.Student, _message, allUsers);
+        if (_toFaculty) NotifSvc.BroadcastToRole(UserRole.Faculty, _message, allUsers);
+        if (_toAdmin) NotifSvc.BroadcastToRole(UserRole.Admin, _message, allUsers);
+
+        _msg = "Broadcast sent successfully!";
+        _msgType = AlertType.Success;
+        _message = "";
+        _toStudents = _toFaculty = _toAdmin = false;
+    }
+}

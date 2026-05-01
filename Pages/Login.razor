@@ -1,0 +1,63 @@
+@page "/login"
+@rendermode InteractiveServer
+@layout MainLayout
+@inject AuthStateService Auth
+@inject UserStore Store
+@inject NavigationManager Nav
+
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">EduConnect Login</h5>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <AlertBox Message="@_error" Type="AlertType.Error" />
+                }
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input class="form-control" @bind="_email" @bind:event="oninput" placeholder="admin@edu.com" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    <input class="form-control" type="password" @bind="_password" @bind:event="oninput" />
+                </div>
+                <button class="btn btn-primary w-100" @onclick="DoLogin">Login</button>
+                <hr/>
+                <small class="text-muted">
+                    Admin: admin@edu.com / admin<br/>
+                    Faculty: obaid@edu.com / obaid123<br/>
+                    Student: 241938@students.au.edu.pk / pass938<br/>
+                    Student: 241797@students.au.edu.pk / pass797 <br />
+                    Student: 241926@students.au.edu.pk / pass926
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _email = "", _password = "", _error = "";
+
+    protected override void OnInitialized()
+    {
+        var uri = new Uri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        if (query["logout"] == "true")
+        {
+            Auth.Logout();
+            Nav.NavigateTo("/login", forceLoad: false);
+        }
+    }
+
+    private void DoLogin()
+    {
+        _error = "";
+        var user = Store.FindUser(_email, _password);
+        if (user == null) { _error = "Invalid email or password."; return; }
+        Auth.Login(user);
+        Nav.NavigateTo("/dashboard", forceLoad: false);
+    }
+}

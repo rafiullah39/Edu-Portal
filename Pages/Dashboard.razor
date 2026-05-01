@@ -1,0 +1,146 @@
+﻿@page "/dashboard"
+@page "/unauthorized"
+@rendermode InteractiveServer
+@layout MainLayout
+@inject AuthStateService Auth
+@inject IStudentService StudentSvc
+@inject ICourseService CourseSvc
+@inject NavigationManager Nav
+
+@if (Nav.Uri.Contains("unauthorized"))
+{
+    <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
+        <span style="font-size:1.2rem">🚫</span>
+        <span>You are not authorized to view that page.</span>
+    </div>
+    <button class="btn btn-primary mt-2" @onclick="GoToDashboard">Go to Dashboard</button>
+}
+else if (!Auth.IsLoggedIn)
+{
+    <p class="text-muted">Redirecting...</p>
+}
+else
+{
+    <div class="mb-4">
+        <h4 class="page-title mb-1">Welcome back, @Auth.CurrentUser?.FullName 👋</h4>
+        <p class="text-muted mb-0" style="font-size:0.9rem">
+            Signed in as <strong>@Auth.CurrentUser?.GetRole()</strong> — @DateTime.Now.ToString("dddd, MMMM d, yyyy")
+        </p>
+    </div>
+
+    @if (Auth.CurrentUser?.GetRole() == UserRole.Admin)
+    {
+        var students = StudentSvc.GetAll();
+        var courses = CourseSvc.GetAll();
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-blue">
+                    Total Students
+                    <strong>@students.Count</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-green">
+                    Total Courses
+                    <strong>@courses.Count</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-amber">
+                    Active Enrollments
+                    <strong>@students.SelectMany(s => s.Enrollments).Count(e => e.State == EnrollmentState.Active)</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-red">
+                    Full Courses
+                    <strong>@courses.Count(c => c.Status == EnrollmentStatus.Full)</strong>
+                </div>
+            </div>
+        </div>
+
+        <h5 class="fw-semibold mb-3" style="color:var(--edu-primary)">Quick Actions</h5>
+        <div class="row g-3">
+            <div class="col-sm-6 col-md-3">
+                <a href="/admin/students" class="dash-link">👥 Manage Students</a>
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <a href="/admin/courses" class="dash-link">📚 Manage Courses</a>
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <a href="/admin/reports" class="dash-link">📊 Grade Reports</a>
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <a href="/admin/notifications" class="dash-link">📢 Broadcast</a>
+            </div>
+        </div>
+    }
+
+    @if (Auth.CurrentUser?.GetRole() == UserRole.Faculty)
+    {
+        var faculty = Auth.CurrentUser as Faculty;
+        var assignedCount = faculty?.AssignedCourseIds.Count ?? 0;
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-blue">
+                    Courses Assigned
+                    <strong>@assignedCount</strong>
+                </div>
+            </div>
+        </div>
+
+        <h5 class="fw-semibold mb-3" style="color:var(--edu-primary)">Quick Actions</h5>
+        <div class="row g-3">
+            <div class="col-sm-6 col-md-4">
+                <a href="/faculty/courses" class="dash-link">📖 My Courses</a>
+            </div>
+            <div class="col-sm-6 col-md-4">
+                <a href="/faculty/grades" class="dash-link">✏️ Submit Grades</a>
+            </div>
+        </div>
+    }
+
+    @if (Auth.CurrentUser?.GetRole() == UserRole.Student)
+    {
+        var student = Auth.CurrentUser as Student;
+        var activeEnrollments = student?.Enrollments.Count(e => e.State == EnrollmentState.Active) ?? 0;
+
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-blue">
+                    Semester
+                    <strong>@student?.Semester</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-green">
+                    CGPA
+                    <strong>@student?.CGPA.ToString("0.00")</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-amber">
+                    Enrolled Courses
+                    <strong>@activeEnrollments</strong>
+                </div>
+            </div>
+        </div>
+
+        <h5 class="fw-semibold mb-3" style="color:var(--edu-primary)">Quick Actions</h5>
+        <div class="row g-3">
+            <div class="col-sm-6 col-md-4">
+                <a href="/student/enroll" class="dash-link">📋 Enroll in Courses</a>
+            </div>
+            <div class="col-sm-6 col-md-4">
+                <a href="/student/grades" class="dash-link">🎓 My Grades</a>
+            </div>
+            <div class="col-sm-6 col-md-4">
+                <a href="/notifications" class="dash-link">🔔 Notifications</a>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private void GoToDashboard() => Nav.NavigateTo("/dashboard", forceLoad: true);
+}

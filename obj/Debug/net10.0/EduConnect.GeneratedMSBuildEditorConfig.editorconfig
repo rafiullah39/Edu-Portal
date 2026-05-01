@@ -1,0 +1,91 @@
+is_global = true
+build_property.TargetFramework = net10.0
+build_property.TargetFrameworkIdentifier = .NETCoreApp
+build_property.TargetFrameworkVersion = v10.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = EduConnect
+build_property.RootNamespace = EduConnect
+build_property.ProjectDir = C:\Users\daniy\Downloads\241797_Assignment_2_VP\241797\EduConnect\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = C:\Users\daniy\Downloads\241797_Assignment_2_VP\241797\EduConnect
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 10.0
+build_property.EnableCodeStyleSeverity = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Components/App.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBcHAucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Components/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYWluTGF5b3V0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Components/Routes.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb3V0ZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Components/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xfSW1wb3J0cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/AdminCourses.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5Db3Vyc2VzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/AdminExtra.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5FeHRyYS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/AlertBox.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWxlcnRCb3gucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/AuthGuard.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQXV0aEd1YXJkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/ConfirmDialog.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29uZmlybURpYWxvZy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/CourseCard.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ291cnNlQ2FyZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/Dashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRGFzaGJvYXJkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/FacultyGrades.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRmFjdWx0eUdyYWRlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/Login.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTG9naW4ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/StudentForm.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU3R1ZGVudEZvcm0ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/StudentList.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU3R1ZGVudExpc3QucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/StudentPages.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU3R1ZGVudFBhZ2VzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/daniy/Downloads/241797_Assignment_2_VP/241797/EduConnect/Pages/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 

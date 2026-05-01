@@ -1,0 +1,190 @@
+@page "/student/enroll"
+@page "/notifications"
+@rendermode InteractiveServer
+@layout MainLayout
+@inject AuthStateService Auth
+@inject ICourseService CourseSvc
+@inject INotificationService NotifSvc
+@inject NavigationManager Nav
+@implements IDisposable
+
+<AuthGuard>
+    @{
+        var uri = Nav.Uri;
+        var role = Auth.CurrentUser?.GetRole();
+    }
+
+    @if (uri.Contains("/student/enroll") && role == UserRole.Student)
+    {
+        var student = Auth.CurrentUser as Student;
+        <h4 class="page-title mb-3">Enroll in Courses</h4>
+
+        @if (!string.IsNullOrEmpty(_msg))
+        {
+            <AlertBox Message="@_msg" Type="@_msgType" OnDismissed="@(() => _msg = "")" />
+        }
+
+        <h5 class="fw-semibold mt-3">Available Courses</h5>
+        <div class="row g-3">
+            @foreach (var c in CourseSvc.GetAll().Where(c => c.Status != EnrollmentStatus.Full))
+            {
+                <div class="col-sm-6 col-md-4">
+                    <CourseCard Course="@c" OnEnroll="@DoEnroll" />
+                </div>
+            }
+        </div>
+
+        @if (student?.Enrollments.Any() == true)
+        {
+            <h5 class="fw-semibold mt-4">My Enrollments</h5>
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered">
+                    <thead>
+                        <tr><th>Course</th><th>Semester</th><th>Status</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in student.Enrollments)
+                        {
+                            <tr>
+                                <td>@e.CourseTitle</td>
+                                <td>@e.Semester</td>
+                                <td>@e.State</td>
+                                <td>
+                                    @if (e.State == EnrollmentState.Active)
+                                    {
+                                        <button class="btn btn-outline-danger btn-sm"
+                                                @onclick="() => AskDrop(e)">
+                                            Drop
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <ConfirmDialog Visible="@_showConfirm" Title="Drop Course"
+                       Message="@($"Drop {_toDrop?.CourseTitle}? You cannot re-enroll this semester.")"
+                       OnConfirmed="DoDrop" OnCancelled="CancelDrop" />
+    }
+
+    @if (uri.Contains("/notifications"))
+    {
+        <h4 class="page-title mb-3">Notifications</h4>
+        @if (!_notifs.Any())
+        {
+            <p class="text-muted">No notifications.</p>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var n in _notifs)
+                {
+                    <div class="list-group-item d-flex justify-content-between align-items-start @(n.IsRead ? "" : "list-group-item-info")">
+                        <div>
+                            <span class="badge bg-secondary me-2">@n.Type</span>
+                            @n.Message
+                            <small class="text-muted d-block">@n.CreatedAt.ToString("g")</small>
+                        </div>
+                        @if (!n.IsRead)
+                        {
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    @onclick="() => MarkRead(n)">
+                                Mark Read
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+</AuthGuard>
+
+@code {
+    private string _msg = "";
+    private AlertType _msgType = AlertType.Success;
+    private bool _showConfirm;
+    private Enrollment? _toDrop;
+
+    private List<Notification> _notifs = new();
+
+    protected override void OnInitialized()
+    {
+        CourseSvc.OnEnrollmentChanged += Refresh;
+        NotifSvc.OnNewNotification += OnNotif;
+
+        LoadNotifs();
+    }
+
+    private void LoadNotifs()
+    {
+        if (Auth.CurrentUser != null)
+            _notifs = NotifSvc.GetForUser(Auth.CurrentUser.Id);
+    }
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    private void OnNotif(Notification n)
+    {
+        LoadNotifs();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void MarkRead(Notification n)
+    {
+        NotifSvc.MarkAsRead(n.Id);
+        LoadNotifs();
+        StateHasChanged();
+    }
+
+    private void DoEnroll(Course course)
+    {
+        _msg = "";
+        var student = Auth.CurrentUser as Student;
+        if (student == null) return;
+        try
+        {
+            CourseSvc.EnrollStudent(student.Id, student, course.Id);
+            NotifSvc.Notify(student.Id, $"You enrolled in {course.Title}.", NotificationType.Enrollment);
+            _msg = $"Enrolled in {course.Title}!";
+            _msgType = AlertType.Success;
+        }
+        catch (Exception ex)
+        {
+            _msg = ex.Message;
+            _msgType = AlertType.Error;
+        }
+    }
+
+    private void AskDrop(Enrollment e)
+    {
+        _toDrop = e;
+        _showConfirm = true;
+    }
+
+    private void CancelDrop()
+    {
+        _showConfirm = false;
+        _toDrop = null;
+    }
+
+    private void DoDrop()
+    {
+        _showConfirm = false;
+        if (_toDrop == null) return;
+        var student = Auth.CurrentUser as Student;
+        CourseSvc.DropCourse(student!.Id, _toDrop.CourseId);
+        _toDrop.State = EnrollmentState.Dropped;
+        _toDrop = null;
+        _msg = "Course dropped.";
+        _msgType = AlertType.Warning;
+    }
+
+    public void Dispose()
+    {
+        CourseSvc.OnEnrollmentChanged -= Refresh;
+        NotifSvc.OnNewNotification -= OnNotif;
+    }
+}

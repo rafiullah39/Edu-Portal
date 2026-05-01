@@ -1,0 +1,27 @@
+@* ConfirmDialog: Bootstrap modal with OnConfirmed and OnCancelled EventCallbacks *@
+@if (Visible)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block fade show" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Title</h5>
+                </div>
+                <div class="modal-body">@Message</div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger" @onclick="OnConfirmed">Confirm</button>
+                    <button class="btn btn-secondary" @onclick="OnCancelled">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public string Message { get; set; } = "Are you sure?";
+    [Parameter] public EventCallback OnConfirmed { get; set; }
+    [Parameter] public EventCallback OnCancelled { get; set; }
+}

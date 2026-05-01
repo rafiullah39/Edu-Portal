@@ -1,0 +1,375 @@
+@page "/faculty/grades"
+@page "/faculty/courses"
+@page "/student/grades"
+@page "/admin/reports"
+@rendermode InteractiveServer
+@layout MainLayout
+@inject AuthStateService Auth
+@inject IGradeService GradeSvc
+@inject ICourseService CourseSvc
+@inject INotificationService NotifSvc
+@inject IStudentService StudentSvc
+@inject NavigationManager Nav
+@implements IDisposable
+
+<AuthGuard>
+    @* ── FACULTY: My Courses (/faculty/courses) ─────────────────── *@
+    @if (Nav.Uri.Contains("/faculty/courses") && Auth.CurrentUser?.GetRole() == UserRole.Faculty)
+    {
+        <h4 class="page-title mb-3">My Courses</h4>
+
+        @if (!_myCourses.Any())
+        {
+            <div class="alert alert-info">
+                No courses have been assigned to you yet. Contact the administrator.
+            </div>
+        }
+
+        <div class="row g-3">
+            @foreach (var c in _myCourses)
+            {
+                <div class="col-sm-6 col-md-4">
+                    <CourseCard Course="@c" />
+                </div>
+            }
+        </div>
+    }
+
+    @* ── FACULTY: Grade Submission (/faculty/grades) ─────────────── *@
+    @if (Nav.Uri.Contains("/faculty/grades") && Auth.CurrentUser?.GetRole() == UserRole.Faculty)
+    {
+        <h4 class="page-title mb-3">Submit Grades</h4>
+
+        @if (!string.IsNullOrEmpty(_msg))
+        {
+            <AlertBox Message="@_msg" Type="@_msgType" OnDismissed="@(() => _msg = "")" />
+        }
+
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Select Your Course</label>
+            <select class="form-select" @onchange="OnCourseChanged">
+                <option value="">-- choose a course --</option>
+                @foreach (var c in _facultyCourses)
+                {
+                    <option value="@c.Id">@c.Code — @c.Title</option>
+                }
+            </select>
+            @if (!_facultyCourses.Any())
+            {
+                <div class="text-muted small mt-1">No courses assigned to you.</div>
+            }
+        </div>
+
+        @if (_enrolledStudents.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Marks (0–100)</th>
+                            <th>Letter Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _gradeInputs)
+                        {
+                            var gr = GradeSvc.GetGradesForStudent(row.Key)
+                            .FirstOrDefault(g => g.CourseId == _selectedCourseId);
+                            var letter = gr != null && gr.Marks >= 0 ? gr.LetterGrade : "—";
+                            <tr>
+                                <td>@_enrolledStudents[row.Key]</td>
+                                <td>
+                                    <input class="form-control form-control-sm"
+                                           type="number" min="0" max="100"
+                                           @bind="_gradeInputs[row.Key]" />
+                                </td>
+                                <td>
+                                    <span class="badge @GradeBadge(letter)">@letter</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-success mt-2" @onclick="SubmitGrades">
+                ✅ Submit Grades
+            </button>
+        }
+        else if (_selectedCourseId != Guid.Empty)
+        {
+            <div class="alert alert-info">
+                No students are enrolled in this course yet.
+            </div>
+        }
+    }
+
+    @* ── STUDENT: My Grades (/student/grades) ──────────────────────── *@
+    @if (Nav.Uri.Contains("/student/grades") && Auth.CurrentUser?.GetRole() == UserRole.Student)
+    {
+        <h4 class="page-title mb-3">My Grades</h4>
+
+        <div class="card mb-4" style="max-width:300px">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="text-muted" style="font-size:0.875rem">Cumulative GPA</span>
+                    <span style="font-size:1.6rem;font-weight:700;color:var(--edu-primary)">
+                        @_studentCgpa
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        @if (!_studentGrades.Any())
+        {
+            <div class="alert alert-info">
+                No grades have been posted yet. Check back after your faculty submits grades.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Course</th>
+                            <th>Credits</th>
+                            <th>Marks</th>
+                            <th>Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var g in _studentGrades)
+                        {
+                            <tr class="@g.RowCss">
+                                <td>@g.CourseTitle</td>
+                                <td>@g.CreditHours</td>
+                                <td>@(g.Marks >= 0 ? g.Marks.ToString("0") : "Pending")</td>
+                                <td>
+                                    @if (g.Marks >= 0)
+                                    {
+                                        <span class="badge @GradeBadge(g.LetterGrade)">
+                                            @g.LetterGrade
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+
+    @* ── ADMIN: Grade Report (/admin/reports) ───────────────────────── *@
+    @if (Nav.Uri.Contains("/admin/reports") && Auth.CurrentUser?.GetRole() == UserRole.Admin)
+    {
+        <h4 class="page-title mb-3">Grade Reports</h4>
+
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-green">
+                    A Range (≥3.5 GPA)
+                    <strong>@_aCount</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-blue">
+                    B Range (2.5–3.4)
+                    <strong>@_bCount</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-amber">
+                    C Range (1.5–2.4)
+                    <strong>@_cCount</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card stat-red">
+                    D/F Range (below 1.5)
+                    <strong>@_dCount</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Student</th>
+                        <th>Email</th>
+                        <th>Semester</th>
+                        <th>CGPA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < _allStudents.Count; i++)
+                    {
+                        var s = _allStudents[i];
+                        <tr>
+                            <td class="text-muted">@(i + 1)</td>
+                            <td>@s.FullName</td>
+                            <td>@s.Email</td>
+                            <td>@s.Semester</td>
+                            <td><strong>@s.CGPA.ToString("0.00")</strong></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+</AuthGuard>
+
+@code {
+    // ── Shared ─────────────────────────────────────────────────────
+    private Guid _selectedCourseId;
+    private Dictionary<Guid, string> _enrolledStudents = new();
+    private Dictionary<Guid, double> _gradeInputs = new();
+    private string _msg = "";
+    private AlertType _msgType = AlertType.Success;
+
+    // ── Faculty ────────────────────────────────────────────────────
+    private List<Course> _myCourses = new();
+    private List<Course> _facultyCourses = new();
+
+    // ── Student ────────────────────────────────────────────────────
+    private List<GradeRecord> _studentGrades = new();
+    private string _studentCgpa = "0.00";
+
+    // ── Admin ──────────────────────────────────────────────────────
+    private List<Student> _allStudents = new();
+    private int _aCount, _bCount, _cCount, _dCount;
+
+    protected override void OnInitialized()
+    {
+        GradeSvc.OnGradesSubmitted += Refresh;
+        LoadPageData();
+    }
+
+    private void LoadPageData()
+    {
+        var role = Auth.CurrentUser?.GetRole();
+        var uri = Nav.Uri;
+
+        if (role == UserRole.Faculty)
+        {
+            var faculty = Auth.CurrentUser as Faculty;
+            var allCourses = CourseSvc.GetAll();
+
+            _myCourses = allCourses
+                .Where(c => faculty != null && faculty.AssignedCourseIds.Contains(c.Id))
+                .ToList();
+
+            _facultyCourses = _myCourses;
+        }
+
+        if (role == UserRole.Student)
+        {
+            var student = Auth.CurrentUser as Student;
+            if (student != null)
+            {
+                _studentGrades = GradeSvc.GetGradesForStudent(student.Id);
+                _studentCgpa = student.CGPA.ToString("0.00");
+            }
+        }
+
+        if (role == UserRole.Admin)
+        {
+            _allStudents = StudentSvc.GetAll().OrderByDescending(s => s.CGPA).ToList();
+            _aCount = _allStudents.Count(s => s.CGPA >= 3.5);
+            _bCount = _allStudents.Count(s => s.CGPA >= 2.5 && s.CGPA < 3.5);
+            _cCount = _allStudents.Count(s => s.CGPA >= 1.5 && s.CGPA < 2.5);
+            _dCount = _allStudents.Count(s => s.CGPA < 1.5);
+        }
+    }
+
+    private void Refresh() => InvokeAsync(() =>
+    {
+        LoadPageData();
+        StateHasChanged();
+    });
+
+    private string GradeBadge(string grade) => grade switch
+    {
+        "A" => "bg-success",
+        "B" => "bg-info",
+        "C" => "bg-warning",
+        "D" => "bg-secondary",
+        _ => "bg-danger"
+    };
+
+    private void OnCourseChanged(ChangeEventArgs e)
+    {
+        _selectedCourseId = Guid.TryParse(e.Value?.ToString(), out var id)
+            ? id
+            : Guid.Empty;
+        LoadEnrolled();
+    }
+
+    private void LoadEnrolled()
+    {
+        _enrolledStudents.Clear();
+        _gradeInputs.Clear();
+        if (_selectedCourseId == Guid.Empty) return;
+
+        var course = CourseSvc.GetById(_selectedCourseId);
+        if (course == null) return;
+
+        foreach (var sid in course.EnrolledStudentIds)
+        {
+            var s = StudentSvc.GetById(sid);
+            if (s == null) continue;
+            _enrolledStudents[sid] = s.FullName;
+            var existing = GradeSvc.GetGradesForStudent(sid)
+                                   .FirstOrDefault(g => g.CourseId == _selectedCourseId);
+            _gradeInputs[sid] = existing?.Marks ?? 0;
+        }
+        StateHasChanged();
+    }
+
+    private void SubmitGrades()
+    {
+        var course = CourseSvc.GetById(_selectedCourseId);
+        if (course == null) return;
+
+        foreach (var kvp in _gradeInputs)
+        {
+            if (kvp.Value < 0 || kvp.Value > 100)
+            {
+                _msg = "All marks must be between 0 and 100.";
+                _msgType = AlertType.Error;
+                return;
+            }
+        }
+
+        foreach (var kvp in _gradeInputs)
+        {
+            GradeSvc.SubmitGrade(
+                kvp.Key,
+                _selectedCourseId,
+                kvp.Value,
+                _enrolledStudents[kvp.Key],
+                course.Title,
+                course.CreditHours);
+
+            NotifSvc.Notify(
+                kvp.Key,
+                $"Grades posted for {course.Title}. Your marks: {kvp.Value}/100",
+                NotificationType.GradePosted);
+        }
+
+        _msg = "Grades submitted successfully!";
+        _msgType = AlertType.Success;
+
+        LoadPageData();
+    }
+
+    public void Dispose() => GradeSvc.OnGradesSubmitted -= Refresh;
+}

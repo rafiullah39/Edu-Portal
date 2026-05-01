@@ -1,0 +1,180 @@
+@page "/admin/courses"
+@page "/courses"
+@rendermode InteractiveServer
+@layout MainLayout
+@inject ICourseService CourseSvc
+@inject AuthStateService Auth
+@inject IStudentService StudentSvc
+@implements IDisposable
+
+<AuthGuard>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="page-title mb-0">@(Auth.CurrentUser?.GetRole() == UserRole.Admin ? "Manage Courses" : "Course Catalog")</h4>
+        @if (Auth.CurrentUser?.GetRole() == UserRole.Admin)
+        {
+            <button class="btn btn-success" @onclick="StartAdd">+ Add Course</button>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(_msg))
+    {
+        <AlertBox Message="@_msg" Type="@_msgType" OnDismissed="@(() => _msg = "")" />
+    }
+
+    @if (_editing && Auth.CurrentUser?.GetRole() == UserRole.Admin)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="fw-semibold mb-3">@(_form.Id == Guid.Empty ? "New Course" : "Edit Course")</h6>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <input class="form-control @(_errors.ContainsKey("Code") ? "is-invalid" : "")"
+                               placeholder="Code" @bind="_form.Code" />
+                        @if (_errors.ContainsKey("Code"))
+                        {
+                            <div class="invalid-feedback d-block">@_errors["Code"]</div>
+                        }
+                    </div>
+                    <div class="col-md-4">
+                        <input class="form-control @(_errors.ContainsKey("Title") ? "is-invalid" : "")"
+                               placeholder="Title" @bind="_form.Title" />
+                        @if (_errors.ContainsKey("Title"))
+                        {
+                            <div class="invalid-feedback d-block">@_errors["Title"]</div>
+                        }
+                    </div>
+                    <div class="col-md-3">
+                        <input class="form-control @(_errors.ContainsKey("CreditHours") ? "is-invalid" : "")"
+                               type="number" min="1" max="4" placeholder="Credits (1-4)"
+                               @bind="_form.CreditHours" />
+                        @if (_errors.ContainsKey("CreditHours"))
+                        {
+                            <div class="invalid-feedback d-block">@_errors["CreditHours"]</div>
+                        }
+                    </div>
+                    <div class="col-md-2">
+                        <input class="form-control @(_errors.ContainsKey("MaxCapacity") ? "is-invalid" : "")"
+                               type="number" min="1" placeholder="Capacity"
+                               @bind="_form.MaxCapacity" />
+                        @if (_errors.ContainsKey("MaxCapacity"))
+                        {
+                            <div class="invalid-feedback d-block">@_errors["MaxCapacity"]</div>
+                        }
+                    </div>
+                    <div class="col-auto d-flex gap-2 align-items-start">
+                        <button class="btn btn-primary btn-sm" @onclick="SaveCourse">Save</button>
+                        <button class="btn btn-secondary btn-sm" @onclick="CancelEdit">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row g-3">
+        @foreach (var c in _courses)
+        {
+            <div class="col-sm-6 col-md-4">
+                <CourseCard Course="@c" />
+                @if (Auth.CurrentUser?.GetRole() == UserRole.Admin)
+                {
+                    <div class="d-flex gap-2 mt-n2 mb-3">
+                        <button class="btn btn-warning btn-sm" @onclick="() => StartEdit(c)">Edit</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => AskDelete(c)">Delete</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <ConfirmDialog Visible="@_showConfirm" Title="Delete Course"
+                   Message="@($"Delete {_toDelete?.Title}?")"
+                   OnConfirmed="DoDelete" OnCancelled="@(() => _showConfirm = false)" />
+</AuthGuard>
+
+@code {
+    private Course _form = new();
+    private bool _editing, _showConfirm;
+    private Course? _toDelete;
+    private string _msg = "";
+    private AlertType _msgType = AlertType.Success;
+    private Dictionary<string, string> _errors = new();
+    private List<Course> _courses = new();
+
+    protected override void OnInitialized()
+    {
+        LoadCourses();
+        CourseSvc.OnEnrollmentChanged += Refresh;
+    }
+
+    private void LoadCourses() => _courses = CourseSvc.GetAll();
+
+    private void Refresh() => InvokeAsync(() =>
+    {
+        LoadCourses();
+        StateHasChanged();
+    });
+
+    private void StartAdd()
+    {
+        _form = new Course { Id = Guid.Empty };
+        _editing = true;
+        _errors = new();
+        _msg = "";
+    }
+
+    private void StartEdit(Course c)
+    {
+        _form = new Course
+        {
+            Id = c.Id,
+            Code = c.Code,
+            Title = c.Title,
+            CreditHours = c.CreditHours,
+            MaxCapacity = c.MaxCapacity,
+            AssignedFacultyId = c.AssignedFacultyId
+        };
+        _editing = true;
+        _errors = new();
+        _msg = "";
+    }
+
+    private void CancelEdit()
+    {
+        _editing = false;
+        _errors = new();
+        _msg = "";
+    }
+
+    private void SaveCourse()
+    {
+        _errors = _form.Validate();
+        if (_errors.Any()) return;
+        if (_form.Id == Guid.Empty)
+        {
+            _form.Id = Guid.NewGuid();
+            CourseSvc.Add(_form);
+        }
+        else
+            CourseSvc.Update(_form);
+        _editing = false;
+        LoadCourses();
+        _msg = "Course saved.";
+        _msgType = AlertType.Success;
+    }
+
+    private void AskDelete(Course c) { _toDelete = c; _showConfirm = true; }
+
+    private void DoDelete()
+    {
+        _showConfirm = false;
+        CourseSvc.Delete(_toDelete!.Id);
+        LoadCourses();
+        _msg = "Course deleted.";
+        _msgType = AlertType.Success;
+    }
+
+    public void Dispose()
+    {
+        CourseSvc.OnEnrollmentChanged -= Refresh;
+    }
+}

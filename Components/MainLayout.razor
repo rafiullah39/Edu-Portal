@@ -1,0 +1,114 @@
+@inherits LayoutComponentBase
+@inject AuthStateService Auth
+@inject INotificationService NotifSvc
+@inject NavigationManager Nav
+@implements IDisposable
+
+<CascadingValue Value="Auth">
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">EduConnect</a>
+
+            @if (Auth.IsLoggedIn)
+            {
+                <button class="navbar-toggler border-0" type="button"
+                        @onclick="ToggleNav" style="color:rgba(255,255,255,0.8)">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="navbar-nav ms-auto align-items-lg-center flex-wrap @(_navOpen ? "d-flex" : "d-none d-lg-flex")">
+                    <span class="navbar-text me-2 d-none d-lg-inline">@Auth.CurrentUser!.FullName</span>
+                    <span class="badge bg-info me-2">@Auth.CurrentUser.GetRole()</span>
+
+                    @if (Auth.CurrentUser.GetRole() == UserRole.Admin)
+                    {
+                        <a class="nav-link @Active("/admin/students")" href="/admin/students">Students</a>
+                        <a class="nav-link @Active("/admin/courses")" href="/admin/courses">Courses</a>
+                        <a class="nav-link @Active("/admin/reports")" href="/admin/reports">Reports</a>
+                        <a class="nav-link @Active("/admin/notifications")" href="/admin/notifications">Broadcast</a>
+                    }
+                    @if (Auth.CurrentUser.GetRole() == UserRole.Faculty)
+                    {
+                        <a class="nav-link @Active("/faculty/courses")" href="/faculty/courses">My Courses</a>
+                        <a class="nav-link @Active("/faculty/grades")" href="/faculty/grades">Grades</a>
+                    }
+                    @if (Auth.CurrentUser.GetRole() == UserRole.Student)
+                    {
+                        <a class="nav-link @Active("/student/enroll")" href="/student/enroll">Enroll</a>
+                        <a class="nav-link @Active("/student/grades")" href="/student/grades">My Grades</a>
+                    }
+
+                    <a class="notif-bell ms-1" href="/notifications">
+                        🔔
+                        @if (_unread > 0)
+                        {
+                            <span class="notif-badge">@(_unread > 9 ? "9+" : _unread.ToString())</span>
+                        }
+                    </a>
+                    <a class="btn btn-outline-light btn-sm ms-2" href="/login?logout=true">Logout</a>
+                </div>
+            }
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        @Body
+    </div>
+</CascadingValue>
+
+@code {
+    private int _unread = 0;
+    private bool _navOpen = false;
+
+    protected override void OnInitialized()
+    {
+        Auth.OnAuthChanged += Refresh;
+        NotifSvc.OnNewNotification += OnNotif;
+        Nav.LocationChanged += OnLocationChanged;
+
+        if (Auth.IsLoggedIn)
+            _unread = NotifSvc.GetUnreadCount(Auth.CurrentUser!.Id);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && Auth.IsLoggedIn)
+        {
+            _unread = NotifSvc.GetUnreadCount(Auth.CurrentUser!.Id);
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleNav() => _navOpen = !_navOpen;
+
+    private string Active(string path) =>
+        Nav.Uri.Contains(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _navOpen = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Refresh()
+    {
+        _unread = Auth.IsLoggedIn ? NotifSvc.GetUnreadCount(Auth.CurrentUser!.Id) : 0;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnNotif(Notification n)
+    {
+        if (Auth.CurrentUser != null && n.UserId == Auth.CurrentUser.Id)
+        {
+            _unread = NotifSvc.GetUnreadCount(Auth.CurrentUser.Id);
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        Auth.OnAuthChanged -= Refresh;
+        NotifSvc.OnNewNotification -= OnNotif;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

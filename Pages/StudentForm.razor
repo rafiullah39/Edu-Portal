@@ -1,0 +1,130 @@
+@page "/admin/students/add"
+@page "/admin/students/edit/{Id:guid}"
+@page "/admin/students/detail/{Id:guid}"
+@layout MainLayout
+@inject IStudentService StudentSvc
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<AuthGuard AllowedRoles="@(new[]{ UserRole.Admin })">
+    <h4 class="page-title mb-3">@_title</h4>
+
+    @if (!string.IsNullOrEmpty(_msg))
+    {
+        <AlertBox Message="@_msg" Type="@_msgType" />
+    }
+
+    @if (_mode == "detail" && _student != null)
+    {
+        @* Detail view — one-way binding, read only *@
+        <div class="card mb-3 col-md-6">
+            <div class="card-body">
+                <p><strong>Name:</strong> @_student.FullName</p>
+                <p><strong>Email:</strong> @_student.Email</p>
+                <p><strong>Semester:</strong> @_student.Semester</p>
+                <p class="mb-0"><strong>CGPA:</strong> @_student.CGPA.ToString("0.00")</p>
+            </div>
+        </div>
+        <h5 class="fw-semibold mb-2">Enrollments</h5>
+        @if (!_student.Enrollments.Any())
+        {
+            <p class="text-muted">No enrollments.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered">
+                    <thead><tr><th>Course</th><th>Semester</th><th>Status</th></tr></thead>
+                    <tbody>
+                        @foreach (var e in _student.Enrollments.OrderBy(e => e.CourseTitle))
+                        {
+                            <tr><td>@e.CourseTitle</td><td>@e.Semester</td><td>@e.State</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        <a href="/admin/students" class="btn btn-secondary">Back</a>
+    }
+    else
+    {
+        @* Add / Edit form — two-way binding on all fields *@
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Full Name</label>
+                <input class="form-control @(HasError("FullName"))" @bind="_student!.FullName" @bind:event="oninput" />
+                @if (_errors.ContainsKey("FullName")) { <div class="text-danger small">@_errors["FullName"]</div> }
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input class="form-control @(HasError("Email"))" @bind="_student.Email" @bind:event="oninput" />
+                @if (_errors.ContainsKey("Email")) { <div class="text-danger small">@_errors["Email"]</div> }
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Semester</label>
+                <select class="form-select @(HasError("Semester"))" @bind="_student.Semester">
+                    @for (int i = 1; i <= 8; i++) { <option value="@i">@i</option> }
+                </select>
+                @if (_errors.ContainsKey("Semester")) { <div class="text-danger small">@_errors["Semester"]</div> }
+            </div>
+            <div class="mb-3">
+                <label class="form-label">CGPA</label>
+                <input class="form-control @(HasError("CGPA"))" type="number" step="0.01" min="0" max="4" @bind="_student.CGPA" @bind:event="oninput" />
+                @if (_errors.ContainsKey("CGPA")) { <div class="text-danger small">@_errors["CGPA"]</div> }
+            </div>
+            <button class="btn btn-primary me-1" @onclick="Save">Save</button>
+            <a href="/admin/students" class="btn btn-secondary">Cancel</a>
+        </div>
+    }
+</AuthGuard>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private Student? _student;
+    private string _mode = "add", _title = "Add Student", _msg = "";
+    private AlertType _msgType = AlertType.Success;
+    private Dictionary<string, string> _errors = new();
+
+    protected override void OnInitialized()
+    {
+        var uri = Nav.Uri;
+        if (uri.Contains("/edit/"))   { _mode = "edit";   _title = "Edit Student"; }
+        else if (uri.Contains("/detail/")) { _mode = "detail"; _title = "Student Detail"; }
+
+        if (Id.HasValue)
+        {
+            var found = StudentSvc.GetById(Id.Value);
+            if (found == null) { Nav.NavigateTo("/admin/students"); return; }
+            // Pre-populate form with existing data (one-way binding on load)
+            _student = new Student
+            {
+                Id = found.Id, FullName = found.FullName, Email = found.Email,
+                Semester = found.Semester, CGPA = found.CGPA, Enrollments = found.Enrollments
+            };
+        }
+        else
+        {
+            _student = new Student();
+        }
+    }
+
+    private void Save()
+    {
+        _errors = _student!.Validate();
+        if (_errors.Any()) return;
+
+        try
+        {
+            if (_mode == "add") StudentSvc.Add(_student);
+            else StudentSvc.Update(_student);
+            Nav.NavigateTo("/admin/students");
+        }
+        catch (Exception ex)
+        {
+            _msg = ex.Message; _msgType = AlertType.Error;
+        }
+    }
+
+    private string HasError(string field) => _errors.ContainsKey(field) ? "is-invalid" : "";
+}

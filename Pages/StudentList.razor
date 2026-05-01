@@ -1,0 +1,76 @@
+@page "/admin/students"
+@rendermode InteractiveServer
+@layout MainLayout
+@inject IStudentService StudentSvc
+@inject NavigationManager Nav
+
+<AuthGuard AllowedRoles="@(new[]{ UserRole.Admin })">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="page-title mb-0">Students</h4>
+        <a href="/admin/students/add" class="btn btn-success">+ Add Student</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_msg))
+    {
+        <AlertBox Message="@_msg" Type="@_msgType" />
+    }
+
+    @* Two-way binding: list filters instantly as user types — no button needed *@
+    <input class="form-control mb-3" placeholder="Search by name or email..."
+           @bind="_search" @bind:event="oninput" />
+
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered">
+            <thead>
+                <tr><th>Name</th><th>Email</th><th>Semester</th><th>CGPA</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var s in FilteredStudents)
+                {
+                    <tr>
+                        <td>@s.FullName</td>
+                        <td>@s.Email</td>
+                        <td>@s.Semester</td>
+                        <td>@s.CGPA.ToString("0.00")</td>
+                        <td>
+                            <a href="/admin/students/edit/@s.Id"   class="btn btn-warning btn-sm me-1">Edit</a>
+                            <a href="/admin/students/detail/@s.Id" class="btn btn-info btn-sm me-1">View</a>
+                            <button class="btn btn-danger btn-sm" @onclick="() => AskDelete(s)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <ConfirmDialog Visible="@_showConfirm" Title="Delete Student"
+        Message="@($"Delete {_toDelete?.FullName}? This cannot be undone.")"
+        OnConfirmed="DoDelete" OnCancelled="@(() => _showConfirm = false)" />
+</AuthGuard>
+
+@code {
+    private string _search = "";
+    private string _msg = "";
+    private AlertType _msgType = AlertType.Error;
+    private bool _showConfirm = false;
+    private Student? _toDelete;
+
+    // Computed property — two-way bind on _search drives this automatically
+    private List<Student> FilteredStudents => StudentSvc.Search(_search);
+
+    private void AskDelete(Student s) { _toDelete = s; _showConfirm = true; }
+
+    private void DoDelete()
+    {
+        _showConfirm = false;
+        try
+        {
+            StudentSvc.Delete(_toDelete!.Id);
+            _msg = "Student deleted."; _msgType = AlertType.Success;
+        }
+        catch (Exception ex)
+        {
+            _msg = ex.Message; _msgType = AlertType.Error;
+        }
+    }
+}

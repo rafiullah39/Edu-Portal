@@ -1,0 +1,38 @@
+@rendermode InteractiveServer
+@inject AuthStateService Auth
+@inject NavigationManager Nav
+
+@if (_checked)
+{
+    @if (Auth.IsLoggedIn &&
+             (AllowedRoles == null || AllowedRoles.Contains(Auth.CurrentUser!.GetRole())))
+    {
+        @ChildContent
+    }
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public UserRole[]? AllowedRoles { get; set; }
+
+    private bool _checked = false;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (!Auth.IsLoggedIn)
+        {
+            Nav.NavigateTo("/login");
+        }
+        else if (AllowedRoles != null && !AllowedRoles.Contains(Auth.CurrentUser!.GetRole()))
+        {
+            Nav.NavigateTo("/unauthorized");
+        }
+        else
+        {
+            _checked = true;
+            StateHasChanged();
+        }
+    }
+}
